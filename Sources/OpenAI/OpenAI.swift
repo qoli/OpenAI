@@ -32,7 +32,15 @@ final public class OpenAI: OpenAIProtocol {
         /// Default request timeout
         public let timeoutInterval: TimeInterval
         
-        public init(token: String, organizationIdentifier: String? = nil, host: String = "api.openai.com", port: Int = 443, scheme: String = "https", basePath: String = "", timeoutInterval: TimeInterval = 60.0) {
+        public init(
+            token: String,
+            organizationIdentifier: String? = nil,
+            host: String = "api.openai.com",
+            port: Int = 443,
+            scheme: String = "https",
+            basePath: String = "",
+            timeoutInterval: TimeInterval = 60.0
+        ) {
             self.token = token
             self.organizationIdentifier = organizationIdentifier
             self.host = host
