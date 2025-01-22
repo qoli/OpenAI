@@ -22,27 +22,7 @@ class OpenAITests: XCTestCase {
         let configuration = OpenAI.Configuration(token: "foo", organizationIdentifier: "bar", timeoutInterval: 14)
         self.openAI = OpenAI(configuration: configuration, session: self.urlSession)
     }
-    
-    func testCompletions() async throws {
-        let query = CompletionsQuery(model: .textDavinci_003, prompt: "What is 42?", temperature: 0, maxTokens: 100, topP: 1, frequencyPenalty: 0, presencePenalty: 0, stop: ["\\n"])
-        let expectedResult = CompletionsResult(id: "foo", object: "bar", created: 100500, model: .babbage, choices: [
-            .init(text: "42 is the answer to everything", index: 0, finishReason: nil)
-        ], usage: .init(promptTokens: 10, completionTokens: 10, totalTokens: 20))
-        try self.stub(result: expectedResult)
-        
-        let result = try await openAI.completions(query: query)
-        XCTAssertEqual(result, expectedResult)
-    }
-    
-    func testCompletionsAPIError() async throws {
-        let query = CompletionsQuery(model: .textDavinci_003, prompt: "What is 42?", temperature: 0, maxTokens: 100, topP: 1, frequencyPenalty: 0, presencePenalty: 0, stop: ["\\n"])
-        let inError = APIError(message: "foo", type: "bar", param: "baz", code: "100")
-        self.stub(error: inError)
-        
-        let apiError: APIError = try await XCTExpectError { try await openAI.completions(query: query) }
-        XCTAssertEqual(inError, apiError)
-    }
-    
+
     func testImages() async throws {
         let query = ImagesQuery(prompt: "White cat with heterochromia sitting on the kitchen table", model: .dall_e_2, n: 1, size: ._1024)
         let imagesResult = ImagesResult(created: 100, data: [
@@ -147,26 +127,6 @@ class OpenAITests: XCTestCase {
         self.stub(error: inError)
 
         let apiError: APIError = try await XCTExpectError { try await openAI.chats(query: query) }
-        XCTAssertEqual(inError, apiError)
-    }
-    
-    func testEdits() async throws {
-        let query = EditsQuery(model: .gpt4, input: "What day of the wek is it?", instruction: "Fix the spelling mistakes")
-        let editsResult = EditsResult(object: "edit", created: 1589478378, choices: [
-            .init(text: "What day of the week is it?", index: 0)
-        ], usage: .init(promptTokens: 25, completionTokens: 32, totalTokens: 57))
-        try self.stub(result: editsResult)
-        
-        let result = try await openAI.edits(query: query)
-        XCTAssertEqual(result, editsResult)
-    }
-    
-    func testEditsError() async throws {
-        let query = EditsQuery(model: .gpt4, input: "What day of the wek is it?", instruction: "Fix the spelling mistakes")
-        let inError = APIError(message: "foo", type: "bar", param: "baz", code: "100")
-        self.stub(error: inError)
-
-        let apiError: APIError = try await XCTExpectError { try await openAI.edits(query: query) }
         XCTAssertEqual(inError, apiError)
     }
     
@@ -426,11 +386,46 @@ class OpenAITests: XCTestCase {
         XCTAssertEqual(chatsURL, URL(string: "https://api.openai.com:443/v1/chat/completions"))
     }
     
-    func testCustomURLBuilt() {
+    func testCustomURLBuiltWithPredefinedPath() {
         let configuration = OpenAI.Configuration(token: "foo", organizationIdentifier: "bar", host: "my.host.com", timeoutInterval: 14)
         let openAI = OpenAI(configuration: configuration, session: self.urlSession)
         let chatsURL = openAI.buildURL(path: .chats)
         XCTAssertEqual(chatsURL, URL(string: "https://my.host.com:443/v1/chat/completions"))
+    }
+    
+    func testCustomURLBuiltWithCustomPath() {
+        let configuration = OpenAI.Configuration(
+            token: "foo",
+            organizationIdentifier: "bar",
+            host: "bizbaz.com",
+            timeoutInterval: 14
+        )
+        let openAI = OpenAI(configuration: configuration, session: URLSessionMock())
+        XCTAssertEqual(openAI.buildURL(path: "foo"), URL(string: "https://bizbaz.com:443/foo"))
+    }
+    
+    func testCustomURLBuiltWithCustomBasePath() {
+        let configuration = OpenAI.Configuration(
+            token: "foo",
+            organizationIdentifier: "bar",
+            host: "bizbaz.com",
+            basePath: "/openai",
+            timeoutInterval: 14
+        )
+        let openAI = OpenAI(configuration: configuration, session: URLSessionMock())
+        XCTAssertEqual(openAI.buildURL(path: "foo"), URL(string:"https://bizbaz.com:443/openai/foo"))
+    }
+    
+    func testCustomURLBuiltWithCustomBasePathWithTrailingSlash() {
+        let configuration = OpenAI.Configuration(
+            token: "foo",
+            organizationIdentifier: "bar",
+            host: "bizbaz.com",
+            basePath: "/openai/",
+            timeoutInterval: 14
+        )
+        let openAI = OpenAI(configuration: configuration, session: URLSessionMock())
+        XCTAssertEqual(openAI.buildURL(path: "/foo"), URL(string: "https://bizbaz.com:443/openai/foo"))
     }
 }
 
