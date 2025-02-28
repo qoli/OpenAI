@@ -148,7 +148,13 @@ public struct ChatStreamResult: Codable, Equatable {
                self.delta = nil
             }
             
-            self.finishReason = try container.decodeIfPresent(FinishReason.self, forKey: .finishReason)
+            // 特殊處理 finishReason，將大寫值轉換為小寫
+            if let finishReasonString = try container.decodeIfPresent(String.self, forKey: .finishReason) {
+                let lowercasedReason = finishReasonString.lowercased()
+                self.finishReason = FinishReason(rawValue: lowercasedReason)
+            } else {
+                self.finishReason = nil
+            }
             self.logprobs = try container.decodeIfPresent(ChoiceLogprobs.self, forKey: .logprobs)
         }
 
@@ -206,19 +212,42 @@ public struct ChatStreamResult: Codable, Equatable {
     public let choices: [Choice]
     /// This fingerprint represents the backend configuration that the model runs with. Can be used in conjunction with the `seed` request parameter to understand when backend changes have been made that might impact determinism.
     public let systemFingerprint: String?
+    
+    /// The provider of the model (e.g. "openai", "vertex-ai")
+    public let provider: String?
+    
+    /// Token usage information for the request
+    public struct Usage: Codable, Equatable {
+        public let promptTokens: Int
+        public let completionTokens: Int
+        public let totalTokens: Int
+        
+        private enum CodingKeys: String, CodingKey {
+            case promptTokens = "prompt_tokens"
+            case completionTokens = "completion_tokens"
+            case totalTokens = "total_tokens"
+        }
+    }
+    
+    /// The usage information for the request
+    public let usage: Usage?
 
     public init(id: String? = nil,
                object: String? = nil,
                created: TimeInterval? = nil,
                model: String? = nil,
                choices: [Choice],
-               systemFingerprint: String? = nil) {
+               systemFingerprint: String? = nil,
+               provider: String? = nil,
+               usage: Usage? = nil) {
         self.id = id
         self.object = object
         self.created = created
         self.model = model
         self.choices = choices
         self.systemFingerprint = systemFingerprint
+        self.provider = provider
+        self.usage = usage
     }
 
     public init(from decoder: Decoder) throws {
@@ -230,6 +259,8 @@ public struct ChatStreamResult: Codable, Equatable {
         self.model = try container.decodeIfPresent(String.self, forKey: .model)
         self.choices = try container.decode([Choice].self, forKey: .choices)
         self.systemFingerprint = try container.decodeIfPresent(String.self, forKey: .systemFingerprint)
+        self.provider = try container.decodeIfPresent(String.self, forKey: .provider)
+        self.usage = try container.decodeIfPresent(Usage.self, forKey: .usage)
     }
 
     public enum CodingKeys: String, CodingKey {
@@ -239,5 +270,7 @@ public struct ChatStreamResult: Codable, Equatable {
         case model
         case choices
         case systemFingerprint = "system_fingerprint"
+        case provider
+        case usage
     }
 }

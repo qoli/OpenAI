@@ -58,15 +58,16 @@ extension StreamingSession {
             return
         }
 
-        if !stringContent.hasPrefix("data:") {
-            return
-        }
+        print(stringContent)
 
-        let jsonObjects = "\(previousChunkBuffer)\(stringContent)"
+        let lines = "\(previousChunkBuffer)\(stringContent)"
             .trimmingCharacters(in: .whitespacesAndNewlines)
-            .components(separatedBy: "data:")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { $0.isEmpty == false }
+            .components(separatedBy: .newlines)
+
+        let jsonObjects = lines
+            .filter { $0.hasPrefix("data: ") }
+            .map { $0.replacingOccurrences(of: "data: ", with: "") }
+            .filter { !$0.isEmpty }
 
         previousChunkBuffer = ""
 
@@ -77,15 +78,20 @@ extension StreamingSession {
             guard jsonContent != streamingCompletionMarker && !jsonContent.isEmpty else {
                 return
             }
+
             guard let jsonData = jsonContent.data(using: .utf8) else {
+                print("❌ 錯誤：無法將內容轉換為 UTF-8 數據")
                 onProcessingError?(self, StreamingError.unknownContent)
                 return
             }
+
             let decoder = JSONDecoder()
             do {
                 let object = try decoder.decode(ResultType.self, from: jsonData)
                 onReceiveContent?(self, object)
             } catch {
+                print("⚠️ 解碼錯誤：\(error)")
+
                 if let decoded = try? decoder.decode(APIErrorResponse.self, from: jsonData) {
                     onProcessingError?(self, decoded)
                 } else if index == jsonObjects.count - 1 {
