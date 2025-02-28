@@ -58,7 +58,7 @@ extension StreamingSession {
             return
         }
 
-        if stringContent.hasPrefix("data:") {
+        if !stringContent.hasPrefix("data:") {
             return
         }
 
