@@ -58,7 +58,7 @@ extension StreamingSession {
             return
         }
 
-        print(stringContent)
+//        print(stringContent)
 
         let lines = "\(previousChunkBuffer)\(stringContent)"
             .trimmingCharacters(in: .whitespacesAndNewlines)

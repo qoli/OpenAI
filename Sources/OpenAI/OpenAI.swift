@@ -10,28 +10,33 @@ import Foundation
 import FoundationNetworking
 #endif
 
+// OpenAI主類,實現了OpenAIProtocol協議
 final public class OpenAI: OpenAIProtocol {
 
+    // 配置結構,包含了API使用所需的基本設定
     public struct Configuration {
         
-        /// OpenAI API token. See https://platform.openai.com/docs/api-reference/authentication
+        /// OpenAI API令牌。查看 https://platform.openai.com/docs/api-reference/authentication
         public let token: String
         
-        /// Optional OpenAI organization identifier. See https://platform.openai.com/docs/api-reference/authentication
+        /// 可選的OpenAI組織標識符。查看 https://platform.openai.com/docs/api-reference/authentication 
         public let organizationIdentifier: String?
         
-        /// API host. Set this property if you use some kind of proxy or your own server. Default is api.openai.com
+        /// API主機。如果使用代理或自己的服務器可設置此屬性。預設為api.openai.com
         public let host: String
 
-        /// Optional base path if you set up OpenAI API proxy on a custom path on your own host. Default is ""
+        /// 如果在自己的主機上設置了自定義路徑的OpenAI API代理,可設置此屬性。預設為空字符串
         public let basePath: String
 
+        // 端口號
         public let port: Int
+        // 協議類型(http/https)
         public let scheme: String
         
-        /// Default request timeout
+        /// 預設請求超時時間
         public let timeoutInterval: TimeInterval
         
+        // 配置初始化方法
         public init(
             token: String,
             organizationIdentifier: String? = nil,
@@ -51,86 +56,109 @@ final public class OpenAI: OpenAIProtocol {
         }
     }
     
+    // URL會話管理
     private let session: URLSessionProtocol
+    // 用於管理流式傳輸會話的線程安全數組
     private var streamingSessions = ArrayWithThreadSafety<NSObject>()
     
+    // 公開配置屬性
     public let configuration: Configuration
 
+    // 簡便初始化方法,只需提供API令牌
     public convenience init(apiToken: String) {
         self.init(configuration: Configuration(token: apiToken), session: URLSession.shared)
     }
     
+    // 使用Configuration初始化
     public convenience init(configuration: Configuration) {
         self.init(configuration: configuration, session: URLSession.shared)
     }
 
+    // 內部初始化方法
     init(configuration: Configuration, session: URLSessionProtocol) {
         self.configuration = configuration
         self.session = session
     }
 
+    // 公開初始化方法,可自定義URLSession
     public convenience init(configuration: Configuration, session: URLSession = URLSession.shared) {
         self.init(configuration: configuration, session: session as URLSessionProtocol)
     }
     
+    // MARK: - API方法
+    
+    // 圖像生成
     public func images(query: ImagesQuery, completion: @escaping (Result<ImagesResult, Error>) -> Void) {
         performRequest(request: JSONRequest<ImagesResult>(body: query, url: buildURL(path: .images)), completion: completion)
     }
     
+    // 圖像編輯
     public func imageEdits(query: ImageEditsQuery, completion: @escaping (Result<ImagesResult, Error>) -> Void) {
         performRequest(request: MultipartFormDataRequest<ImagesResult>(body: query, url: buildURL(path: .imageEdits)), completion: completion)
     }
     
+    // 圖像變體生成
     public func imageVariations(query: ImageVariationsQuery, completion: @escaping (Result<ImagesResult, Error>) -> Void) {
         performRequest(request: MultipartFormDataRequest<ImagesResult>(body: query, url: buildURL(path: .imageVariations)), completion: completion)
     }
     
+    // 文本嵌入
     public func embeddings(query: EmbeddingsQuery, completion: @escaping (Result<EmbeddingsResult, Error>) -> Void) {
         performRequest(request: JSONRequest<EmbeddingsResult>(body: query, url: buildURL(path: .embeddings)), completion: completion)
     }
     
+    // 聊天完成
     public func chats(query: ChatQuery, completion: @escaping (Result<ChatResult, Error>) -> Void) {
         performRequest(request: JSONRequest<ChatResult>(body: query, url: buildURL(path: .chats)), completion: completion)
     }
     
+    // 聊天流式傳輸
     public func chatsStream(query: ChatQuery, onResult: @escaping (Result<ChatStreamResult, Error>) -> Void, completion: ((Error?) -> Void)?) {
         performStreamingRequest(request: JSONRequest<ChatStreamResult>(body: query.makeStreamable(), url: buildURL(path: .chats)), onResult: onResult, completion: completion)
     }
     
+    // 獲取單個模型信息
     public func model(query: ModelQuery, completion: @escaping (Result<ModelResult, Error>) -> Void) {
         performRequest(request: JSONRequest<ModelResult>(url: buildURL(path: .models.withPath(query.model)), method: "GET"), completion: completion)
     }
     
+    // 獲取所有可用模型列表
     public func models(completion: @escaping (Result<ModelsResult, Error>) -> Void) {
         performRequest(request: JSONRequest<ModelsResult>(url: buildURL(path: .models), method: "GET"), completion: completion)
     }
     
+    // 內容審核
     @available(iOS 13.0, *)
     public func moderations(query: ModerationsQuery, completion: @escaping (Result<ModerationsResult, Error>) -> Void) {
         performRequest(request: JSONRequest<ModerationsResult>(body: query, url: buildURL(path: .moderations)), completion: completion)
     }
     
+    // 音頻轉錄
     public func audioTranscriptions(query: AudioTranscriptionQuery, completion: @escaping (Result<AudioTranscriptionResult, Error>) -> Void) {
         performRequest(request: MultipartFormDataRequest<AudioTranscriptionResult>(body: query, url: buildURL(path: .audioTranscriptions)), completion: completion)
     }
     
+    // 音頻翻譯
     public func audioTranslations(query: AudioTranslationQuery, completion: @escaping (Result<AudioTranslationResult, Error>) -> Void) {
         performRequest(request: MultipartFormDataRequest<AudioTranslationResult>(body: query, url: buildURL(path: .audioTranslations)), completion: completion)
     }
     
+    // 文本轉語音
     public func audioCreateSpeech(query: AudioSpeechQuery, completion: @escaping (Result<AudioSpeechResult, Error>) -> Void) {
         performSpeechRequest(request: JSONRequest<AudioSpeechResult>(body: query, url: buildURL(path: .audioSpeech)), completion: completion)
     }
     
 }
 
+// MARK: - 網絡請求處理
 extension OpenAI {
 
+    // 執行一般HTTP請求
     func performRequest<ResultType: Codable>(request: any URLRequestBuildable, completion: @escaping (Result<ResultType, Error>) -> Void) {
         do {
             let request = try request.build(token: configuration.token, 
-                                            organizationIdentifier: configuration.organizationIdentifier,
-                                            timeoutInterval: configuration.timeoutInterval)
+                                             organizationIdentifier: configuration.organizationIdentifier,
+                                             timeoutInterval: configuration.timeoutInterval)
             let task = session.dataTask(with: request) { data, _, error in
                 if let error = error {
                     return completion(.failure(error))
@@ -151,11 +179,12 @@ extension OpenAI {
         }
     }
     
+    // 執行流式傳輸請求
     func performStreamingRequest<ResultType: Codable>(request: any URLRequestBuildable, onResult: @escaping (Result<ResultType, Error>) -> Void, completion: ((Error?) -> Void)?) {
         do {
             let request = try request.build(token: configuration.token, 
-                                            organizationIdentifier: configuration.organizationIdentifier,
-                                            timeoutInterval: configuration.timeoutInterval)
+                                             organizationIdentifier: configuration.organizationIdentifier,
+                                             timeoutInterval: configuration.timeoutInterval)
             let session = StreamingSession<ResultType>(urlRequest: request)
             session.onReceiveContent = {_, object in
                 onResult(.success(object))
@@ -174,11 +203,12 @@ extension OpenAI {
         }
     }
     
+    // 執行語音相關的請求
     func performSpeechRequest(request: any URLRequestBuildable, completion: @escaping (Result<AudioSpeechResult, Error>) -> Void) {
         do {
             let request = try request.build(token: configuration.token, 
-                                            organizationIdentifier: configuration.organizationIdentifier,
-                                            timeoutInterval: configuration.timeoutInterval)
+                                             organizationIdentifier: configuration.organizationIdentifier,
+                                             timeoutInterval: configuration.timeoutInterval)
             
             let task = session.dataTask(with: request) { data, _, error in
                 if let error = error {
@@ -197,8 +227,10 @@ extension OpenAI {
     }
 }
 
+// MARK: - URL構建
 extension OpenAI {
     
+    // 構建API請求URL
     func buildURL(path: String) -> URL {
         var components = URLComponents()
         components.scheme = configuration.scheme
@@ -214,30 +246,38 @@ extension OpenAI {
         if let url = components.url {
             return url
         } else {
-            // We're expecting components.url to be not nil
-            // But if it isn't, let's just use some URL api that returns non-nil url
-            // Let all requests fail, but so that we don't crash on explicit unwrapping
+            // 預期components.url不為nil
+            // 如果為nil,返回一個空的文件URL
+            // 讓所有請求失敗,但不會在顯式展開時崩潰
             return URL(fileURLWithPath: "")
         }
     }
 }
 
+// MARK: - API路徑定義
 typealias APIPath = String
 extension APIPath {
     
+    // 文本嵌入
     static let embeddings = "/v1/embeddings"
+    // 聊天對話
     static let chats = "/v1/chat/completions"
+    // 模型
     static let models = "/v1/models"
+    // 內容審核
     static let moderations = "/v1/moderations"
     
+    // 語音相關
     static let audioSpeech = "/v1/audio/speech"
     static let audioTranscriptions = "/v1/audio/transcriptions"
     static let audioTranslations = "/v1/audio/translations"
     
+    // 圖像相關
     static let images = "/v1/images/generations"
     static let imageEdits = "/v1/images/edits"
     static let imageVariations = "/v1/images/variations"
     
+    // 拼接路徑
     func withPath(_ path: String) -> String {
         self + "/" + path
     }
