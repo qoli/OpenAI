@@ -37,6 +37,15 @@ This repository contains Swift community-maintained implementation over [OpenAI]
 - [Links](#links)
 - [License](#license)
 
+## 最新更新
+
+此分支已經和 MacPaw 方向不一致，主要以完成兼容 OpenAI 的 API 為主。
+OpenAI 的新特性未必會更新在此分支。
+
+1. 支持 Glama.AI
+2. 支持 Qwen.ai
+3. 支持自定義 api version（例如 Google Gemini 的 v1beta）
+
 ## What is OpenAI
 
 OpenAI is a non-profit artificial intelligence research organization founded in San Francisco, California in 2015. It was created with the purpose of advancing digital intelligence in ways that benefit humanity as a whole and promote societal progress. The organization strives to develop AI (Artificial Intelligence) programs and systems that can think, act and adapt quickly on their own – autonomously. OpenAI's mission is to ensure safe and responsible use of AI for civic good, economic growth and other public benefits; this includes cutting-edge research into important topics such as general AI safety, natural language processing, applied reinforcement learning methods, machine vision algorithms etc.
