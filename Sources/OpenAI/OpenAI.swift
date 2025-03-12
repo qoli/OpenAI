@@ -28,6 +28,9 @@ final public class OpenAI: OpenAIProtocol {
         /// 如果在自己的主機上設置了自定義路徑的OpenAI API代理,可設置此屬性。預設為空字符串
         public let basePath: String
 
+        /// API版本。預設為"v1"
+        public let apiVersion: String
+
         // 端口號
         public let port: Int
         // 協議類型(http/https)
@@ -44,6 +47,7 @@ final public class OpenAI: OpenAIProtocol {
             port: Int = 443,
             scheme: String = "https",
             basePath: String = "",
+            apiVersion: String = "v1",
             timeoutInterval: TimeInterval = 60.0
         ) {
             self.token = token
@@ -52,6 +56,7 @@ final public class OpenAI: OpenAIProtocol {
             self.port = port
             self.scheme = scheme
             self.basePath = basePath
+            self.apiVersion = apiVersion
             self.timeoutInterval = timeoutInterval
         }
     }
@@ -237,7 +242,8 @@ extension OpenAI {
         components.host = configuration.host
         components.port = configuration.port
         
-        let pathComponents = [configuration.basePath, path]
+        // 使用配置中的apiVersion替換hardcoded的"v1"
+        let pathComponents = [configuration.basePath, configuration.apiVersion, path.trimmingCharacters(in: ["/"])]
             .filter { !$0.isEmpty }
             .map { $0.trimmingCharacters(in: ["/"]) }
         
@@ -259,23 +265,23 @@ typealias APIPath = String
 extension APIPath {
     
     // 文本嵌入
-    static let embeddings = "/v1/embeddings"
+    static let embeddings = "/embeddings"
     // 聊天對話
-    static let chats = "/v1/chat/completions"
+    static let chats = "/chat/completions"
     // 模型
-    static let models = "/v1/models"
+    static let models = "/models"
     // 內容審核
-    static let moderations = "/v1/moderations"
+    static let moderations = "/moderations"
     
     // 語音相關
-    static let audioSpeech = "/v1/audio/speech"
-    static let audioTranscriptions = "/v1/audio/transcriptions"
-    static let audioTranslations = "/v1/audio/translations"
+    static let audioSpeech = "/audio/speech"
+    static let audioTranscriptions = "/audio/transcriptions"
+    static let audioTranslations = "/audio/translations"
     
     // 圖像相關
-    static let images = "/v1/images/generations"
-    static let imageEdits = "/v1/images/edits"
-    static let imageVariations = "/v1/images/variations"
+    static let images = "/images/generations"
+    static let imageEdits = "/images/edits"
+    static let imageVariations = "/images/variations"
     
     // 拼接路徑
     func withPath(_ path: String) -> String {
