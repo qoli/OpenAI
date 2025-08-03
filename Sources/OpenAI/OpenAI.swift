@@ -48,7 +48,7 @@ final public class OpenAI: OpenAIProtocol {
             scheme: String = "https",
             basePath: String = "",
             apiVersion: String = "v1",
-            timeoutInterval: TimeInterval = 60.0
+            timeoutInterval: TimeInterval = 900.0
         ) {
             self.token = token
             self.organizationIdentifier = organizationIdentifier
