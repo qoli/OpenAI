@@ -90,7 +90,12 @@ extension StreamingSession {
                 let object = try decoder.decode(ResultType.self, from: jsonData)
                 onReceiveContent?(self, object)
             } catch {
+                let diagnostics = StreamingPayloadDiagnostics.describe(
+                    jsonContent: jsonContent,
+                    urlRequest: urlRequest
+                )
                 print("⚠️ 解碼錯誤：\(error)")
+                print("↳ \(diagnostics)")
 
                 if let decoded = try? decoder.decode(APIErrorResponse.self, from: jsonData) {
                     onProcessingError?(self, decoded)

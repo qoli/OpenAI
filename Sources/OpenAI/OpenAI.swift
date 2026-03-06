@@ -164,6 +164,7 @@ extension OpenAI {
             let request = try request.build(token: configuration.token, 
                                              organizationIdentifier: configuration.organizationIdentifier,
                                              timeoutInterval: configuration.timeoutInterval)
+            RequestPayloadDiagnostics.log(request)
             let task = session.dataTask(with: request) { data, _, error in
                 if let error = error {
                     return completion(.failure(error))
@@ -190,6 +191,7 @@ extension OpenAI {
             let request = try request.build(token: configuration.token, 
                                              organizationIdentifier: configuration.organizationIdentifier,
                                              timeoutInterval: configuration.timeoutInterval)
+            RequestPayloadDiagnostics.log(request)
             let session = StreamingSession<ResultType>(urlRequest: request)
             session.onReceiveContent = {_, object in
                 onResult(.success(object))
@@ -214,6 +216,7 @@ extension OpenAI {
             let request = try request.build(token: configuration.token, 
                                              organizationIdentifier: configuration.organizationIdentifier,
                                              timeoutInterval: configuration.timeoutInterval)
+            RequestPayloadDiagnostics.log(request)
             
             let task = session.dataTask(with: request) { data, _, error in
                 if let error = error {
